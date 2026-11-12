@@ -1,0 +1,42 @@
+name: Build and upload Go binary
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  # For release creation
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-slim
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: 'stable'
+
+      - name: Build Go binary
+        run: make build
+
+      - name: Update Latest tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -f latest
+          git push -f origin latest
+
+      - name: Create Release with GitHub CLI
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete latest --yes || true
+
+          gh release create latest bin/result-uploader \
+            --title "Latest Build" \
+            --notes "Automated build of the latest commit on main." \
+            --generate-notes
